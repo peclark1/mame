@@ -144,6 +144,7 @@ public:
 
 	void install_device(offs_t start, offs_t end, read8sm_delegate rhandler, write8sm_delegate whandler);
 	void install_bank(offs_t start, offs_t end, uint8_t *data);
+	void install_rom(offs_t start, offs_t end, uint8_t *data);
 
 	void irq_w(int state);
 	void nmi_w(int state);
@@ -190,6 +191,7 @@ protected:
 
 	void install_device(offs_t start, offs_t end, read8sm_delegate rhandler, write8sm_delegate whandler);
 	void install_bank(offs_t start, offs_t end, uint8_t *data);
+	void install_rom(offs_t start, offs_t end, uint8_t *data);
 
 	device_kim1bus_card_interface(const machine_config &mconfig, device_t &device);
 
