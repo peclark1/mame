@@ -34,6 +34,7 @@ public:
 
 protected:
 	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
 	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
 
@@ -48,7 +49,7 @@ private:
 
 ROM_START(retrospy_ramrom)
 	ROM_REGION(0x80000, "flash", 0)
-	ROM_LOAD("SYM_AIM_ROM.bin", 0x00000, 0x80000, CRC(68be2a6f) SHA1(97a584e7ee3c0f8b395b4e80836f032000c26a1b))
+	ROM_LOAD("sym_aim_rom.bin", 0x00000, 0x80000, CRC(68be2a6f) SHA1(97a584e7ee3c0f8b395b4e80836f032000c26a1b))
 ROM_END
 
 
@@ -149,7 +150,11 @@ void kim1bus_retrospy_ramrom_device::device_start()
 {
 	m_ram = std::make_unique<u8[]>(0x10000);
 	save_pointer(NAME(m_ram), 0x10000);
+}
 
+
+void kim1bus_retrospy_ramrom_device::device_reset()
+{
 	const u32 pages = m_pages->read();
 	const offs_t rom_base = (m_rom_bank->read() & 0x07) * 0x10000;
 
