@@ -41,7 +41,9 @@ protected:
 private:
 	required_region_ptr<u8> m_rom;
 	required_ioport m_pages;
-	required_ioport m_rom_bank;
+	required_ioport m_rom_select;
+	memory_bank_array_creator<16> m_rom_bank;
+	memory_view m_view[16];
 
 	std::unique_ptr<u8[]> m_ram;
 };
@@ -141,7 +143,13 @@ kim1bus_retrospy_ramrom_device::kim1bus_retrospy_ramrom_device(
 	, device_kim1bus_card_interface(mconfig, *this)
 	, m_rom(*this, "flash")
 	, m_pages(*this, "PAGES")
-	, m_rom_bank(*this, "ROMBANK")
+	, m_rom_select(*this, "ROMBANK")
+	, m_rom_bank(*this, "rombank%u", 0U)
+	, m_view{
+		{*this, "view0"}, {*this, "view1"}, {*this, "view2"}, {*this, "view3"},
+		{*this, "view4"}, {*this, "view5"}, {*this, "view6"}, {*this, "view7"},
+		{*this, "view8"}, {*this, "view9"}, {*this, "view10"}, {*this, "view11"},
+		{*this, "view12"}, {*this, "view13"}, {*this, "view14"}, {*this, "view15"} }
 {
 }
 
@@ -149,6 +157,19 @@ kim1bus_retrospy_ramrom_device::kim1bus_retrospy_ramrom_device(
 void kim1bus_retrospy_ramrom_device::device_start()
 {
 	m_ram = std::make_unique<u8[]>(0x10000);
+
+	for (unsigned page = 0; page < 16; page++)
+	{
+		const offs_t start = page * 0x1000;
+		const offs_t end = start + 0x0fff;
+
+		install_view(start, end, m_view[page]);
+		m_view[page][0].install_ram(start, end, &m_ram[start]);
+
+		m_rom_bank[page]->configure_entries(0, 8, &m_rom[start], 0x10000);
+		m_view[page][1].install_read_bank(start, end, m_rom_bank[page]);
+	}
+
 	save_pointer(NAME(m_ram), 0x10000);
 }
 
@@ -156,21 +177,24 @@ void kim1bus_retrospy_ramrom_device::device_start()
 void kim1bus_retrospy_ramrom_device::device_reset()
 {
 	const u32 pages = m_pages->read();
-	const offs_t rom_base = (m_rom_bank->read() & 0x07) * 0x10000;
+	const u8 rom_bank = m_rom_select->read() & 0x07;
 
 	for (unsigned page = 0; page < 16; page++)
 	{
-		const offs_t start = page * 0x1000;
-		const u32 type = (pages >> (page * 2)) & 0x03;
+		m_rom_bank[page]->set_entry(rom_bank);
 
-		switch (type)
+		switch ((pages >> (page * 2)) & 0x03)
 		{
 		case 1: // RAM
-			install_bank(start, start + 0x0fff, &m_ram[start]);
+			m_view[page].select(0);
 			break;
 
 		case 2: // ROM
-			install_rom(start, start + 0x0fff, &m_rom[rom_base + start]);
+			m_view[page].select(1);
+			break;
+
+		default: // No response from the board
+			m_view[page].disable();
 			break;
 		}
 	}
